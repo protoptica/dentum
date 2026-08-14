@@ -283,10 +283,20 @@ img, svg { display: block; max-width: 100%; }
 .guess-choice button[data-guess="complex"][aria-checked="true"] { background: var(--risk-soft); border-color: var(--risk); outline-color: var(--risk); }
 
 .safety-note {
-  margin: -18px 0 0;
+  margin: -24px 0 0;
   color: var(--muted);
   font-size: 0.72rem;
   line-height: 1.5;
+  text-align: center;
+}
+
+.model-status {
+  min-height: 18px;
+  margin: -24px 0 0;
+  color: var(--brand-deep);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.45;
   text-align: center;
 }
 
@@ -506,7 +516,7 @@ button:focus-visible, label:focus-within, a:focus-visible {
   .guess-choice { flex-direction: row; }
   .guess-choice button { flex: 1; text-align: center; }
   .steps-panel > .button--primary { align-self: flex-start; min-width: 220px; }
-  .safety-note { max-width: 52ch; margin-top: -18px; text-align: left; }
+  .model-status, .safety-note { max-width: 58ch; margin-top: -18px; text-align: left; }
 }
 
 @media (max-width: 680px) {
@@ -522,7 +532,7 @@ button:focus-visible, label:focus-within, a:focus-visible {
   .steps-panel > .button--primary { width: 100%; }
   .guess-choice { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .guess-choice button { padding-inline: 8px; }
-  .safety-note { margin-top: -16px; text-align: center; }
+  .model-status, .safety-note { margin-top: -16px; text-align: center; }
   .xray-stage { min-height: 250px; aspect-ratio: 1.45 / 1; }
   .xray-stage img { object-position: center; }
   .tooth-marker { top: 67%; width: 48px; height: 48px; }

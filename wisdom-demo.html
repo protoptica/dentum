@@ -79,8 +79,9 @@
           </li>
         </ol>
 
-        <button class="button button--primary" id="show-result" type="button" disabled>Показать оценку</button>
-        <p class="safety-note">Прототип имитирует анализ и не является диагнозом или планом лечения.</p>
+        <button class="button button--primary" id="show-result" type="button" disabled>Запустить модель</button>
+        <p class="model-status" id="model-status" role="status" aria-live="polite">Модель загрузится при первом анализе.</p>
+        <p class="safety-note">Модель ищет ретинированный зуб. Проценты сложности рассчитаны игровой эвристикой и не являются диагнозом или планом лечения.</p>
       </aside>
 
       <section class="analysis-panel" aria-label="Область снимка и результата">
@@ -112,13 +113,13 @@
         <div class="result-panel" id="result-panel" hidden aria-live="polite">
           <div class="result-panel__heading">
             <div>
-              <p class="demo-label">Демонстрационная оценка</p>
+              <p class="demo-label">Экспериментальная оценка</p>
               <h2 id="result-title">Зуб 48: высокая предполагаемая сложность</h2>
             </div>
             <span class="match-badge" id="match-badge">Ваш прогноз совпал</span>
           </div>
 
-          <div class="probability-list" aria-label="Распределение категорий сложности">
+          <div class="probability-list" aria-label="Игровое распределение категорий сложности">
             <div class="probability" data-level="simple">
               <span>Простое</span>
               <div class="probability__track"><i style="--value: 8%"></i></div>
@@ -138,10 +139,8 @@
 
           <div class="result-reasons">
             <h3>Что повлияло на оценку</h3>
-            <ul>
-              <li><span aria-hidden="true"></span>Горизонтальное положение зуба</li>
-              <li><span aria-hidden="true"></span>Глубокое залегание в кости</li>
-              <li><span aria-hidden="true"></span>Недостаточно места за седьмым зубом</li>
+            <ul id="result-reason-list">
+              <li><span aria-hidden="true"></span>Ожидается результат детектора</li>
             </ul>
           </div>
 
@@ -164,7 +163,7 @@
     </main>
 
     <footer class="demo-footer">
-      <p>Снимок в демо: Coronation Dental Specialty Group, <a href="https://commons.wikimedia.org/wiki/File:Basic_panoramic_radiograph.jpg" target="_blank" rel="noreferrer">CC BY 3.0</a>.</p>
+      <p>Снимок: Coronation Dental Specialty Group, <a href="https://commons.wikimedia.org/wiki/File:Basic_panoramic_radiograph.jpg" target="_blank" rel="noreferrer">CC BY 3.0</a>. Модель: <a href="https://huggingface.co/liodon-ai/dental-panoramic-detector" target="_blank" rel="noreferrer">Liodon AI, CC BY-NC 4.0</a>.</p>
     </footer>
 
     <dialog class="consultation-dialog" id="consultation-dialog">
@@ -177,6 +176,7 @@
       </form>
     </dialog>
 
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.min.js" crossorigin="anonymous"></script>
     <script src="./wisdom-demo.js"></script>
   </body>
 </html>
