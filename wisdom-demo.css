@@ -73,14 +73,11 @@ img, svg { display: block; max-width: 100%; }
 .demo-brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
   color: var(--ink-strong);
   text-decoration: none;
-  font-size: 1.35rem;
-  font-weight: 800;
 }
 
-.demo-brand img { width: 42px; height: 28px; }
+.demo-brand img { width: auto; height: 42px; object-fit: contain; }
 
 .demo-status {
   display: inline-flex;
@@ -532,8 +529,7 @@ button:focus-visible, label:focus-within, a:focus-visible {
 
 @media (max-width: 680px) {
   .demo-header { min-height: 62px; padding: 9px 16px; }
-  .demo-brand { font-size: 1.1rem; }
-  .demo-brand img { width: 36px; }
+  .demo-brand img { height: 36px; }
   .demo-status { padding: 0 10px; font-size: 0.74rem; }
   .demo-status { max-width: 116px; overflow: hidden; white-space: nowrap; }
   .steps-panel, .analysis-panel { padding: 20px 16px; }
