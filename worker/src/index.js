@@ -22,12 +22,11 @@ Classify angulation as exactly one of: mesioangular, horizontal, vertical, disto
 Depth: A is at or above the second molar occlusal plane; B is between its occlusal plane and cervical line; C is below its cervical line.
 Ramus: I has enough space for the third-molar crown; II has less space than crown width; III is mainly within the ramus.
 
-Return exactly five plain-text lines:
+Return exactly four plain-text lines:
 QUALITY=<ok, low, or invalid>
 ANGULATION=<one allowed angulation>
 DEPTH=<A, B, or C>
-RAMUS=<I, II, or III>
-EVIDENCE=<one short Russian phrase about visible geometry>`;
+RAMUS=<I, II, or III>`;
 }
 
 function jsonResponse(payload, status, origin) {
@@ -88,7 +87,6 @@ export function parseCategoricalOutput(text) {
     angulation: centeredDistribution(Object.keys(ANGULATION_POINTS), angulation, confidence),
     depth: centeredDistribution(Object.keys(DEPTH_POINTS), depth, confidence),
     ramus: centeredDistribution(Object.keys(RAMUS_POINTS), ramus, confidence),
-    evidence: fields.EVIDENCE ? [fields.EVIDENCE] : [],
   };
 }
 
@@ -99,9 +97,6 @@ export function normalizeFeatures(raw) {
     angulation: normalizeDistribution(raw.angulation, Object.keys(ANGULATION_POINTS)),
     depth: normalizeDistribution(raw.depth, Object.keys(DEPTH_POINTS)),
     ramus: normalizeDistribution(raw.ramus, Object.keys(RAMUS_POINTS)),
-    evidence: Array.isArray(raw.evidence)
-      ? raw.evidence.filter((item) => typeof item === "string").slice(0, 3)
-      : [],
   };
 }
 

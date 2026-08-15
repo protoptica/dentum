@@ -10,7 +10,6 @@ const env = {
         angulation: { mesioangular: 0.08, horizontal: 0.82, vertical: 0.07, distoangular: 0.03 },
         depth: { A: 0.08, B: 0.77, C: 0.15 },
         ramus: { I: 0.06, II: 0.74, III: 0.2 },
-        evidence: ["Продольная ось зуба почти горизонтальна", "Коронка частично перекрыта ветвью"],
       }),
     }),
   },

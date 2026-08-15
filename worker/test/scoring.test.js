@@ -8,7 +8,6 @@ test("maps a certain easy combination to simple", () => {
     angulation: { mesioangular: 1 },
     depth: { A: 1 },
     ramus: { I: 1 },
-    evidence: [],
   });
   const result = calculateDistribution(features);
   assert.equal(result.distribution.simple, 1);
@@ -21,7 +20,6 @@ test("maps a certain difficult combination to complex", () => {
     angulation: { distoangular: 1 },
     depth: { C: 1 },
     ramus: { III: 1 },
-    evidence: [],
   });
   const result = calculateDistribution(features);
   assert.equal(result.distribution.complex, 1);
@@ -34,7 +32,6 @@ test("normalizes imperfect model probability groups", () => {
     angulation: { mesioangular: 2, horizontal: 2, vertical: 0, distoangular: 0 },
     depth: { A: 1, B: 1, C: 0 },
     ramus: { I: 0, II: 3, III: 0 },
-    evidence: ["Нечёткая линия"],
   });
   const result = calculateDistribution(features);
   const total = Object.values(result.distribution).reduce((sum, value) => sum + value, 0);
@@ -42,7 +39,7 @@ test("normalizes imperfect model probability groups", () => {
 });
 
 test("turns categorical vision output into uncertainty distributions", () => {
-  const features = parseCategoricalOutput("QUALITY=ok\nANGULATION=mesioangular\nDEPTH=B\nRAMUS=II\nEVIDENCE=Наклон к соседнему зубу");
+  const features = parseCategoricalOutput("QUALITY=ok\nANGULATION=mesioangular\nDEPTH=B\nRAMUS=II");
   assert.equal(features.angulation.mesioangular, 0.76);
   assert.equal(features.depth.B, 0.76);
   assert.equal(features.ramus.II, 0.76);
@@ -61,7 +58,7 @@ test("returns a scored response from the Worker contract", async () => {
     ALLOWED_ORIGIN: "https://yaroslavnasol.ru",
     AI: {
       run: async () => ({
-        response: "QUALITY=ok\nANGULATION=mesioangular\nDEPTH=B\nRAMUS=II\nEVIDENCE=Наклон к семёрке",
+        response: "QUALITY=ok\nANGULATION=mesioangular\nDEPTH=B\nRAMUS=II",
       }),
     },
   };
@@ -69,5 +66,6 @@ test("returns a scored response from the Worker contract", async () => {
   const payload = await response.json();
   assert.equal(response.status, 200);
   assert.equal(payload.tooth, "48");
+  assert.equal("evidence" in payload.features, false);
   assert.ok(payload.distribution.medium > payload.distribution.simple);
 });

@@ -451,7 +451,6 @@ function renderReasons(detection, complexityResult = null) {
         `Угол: ${featureLabels[mostLikelyLabel(complexityResult.features.angulation, Object.keys(featureLabels))]}`,
         `Глубина: уровень ${mostLikelyLabel(complexityResult.features.depth, ["A", "B", "C"])}`,
         `Отношение к ветви: класс ${mostLikelyLabel(complexityResult.features.ramus, ["I", "II", "III"])}`,
-        ...complexityResult.features.evidence.slice(0, 2),
       ]
     : [
         `Детектор нашёл ретинированный зуб: уверенность ${Math.round(detection.confidence * 100)}%`,
