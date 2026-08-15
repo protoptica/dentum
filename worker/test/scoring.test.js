@@ -66,6 +66,6 @@ test("returns a scored response from the Worker contract", async () => {
   const payload = await response.json();
   assert.equal(response.status, 200);
   assert.equal(payload.tooth, "48");
-  assert.equal("evidence" in payload.features, false);
+  assert.deepEqual(payload.features.evidence, []);
   assert.ok(payload.distribution.medium > payload.distribution.simple);
 });

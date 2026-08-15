@@ -87,6 +87,8 @@ export function parseCategoricalOutput(text) {
     angulation: centeredDistribution(Object.keys(ANGULATION_POINTS), angulation, confidence),
     depth: centeredDistribution(Object.keys(DEPTH_POINTS), depth, confidence),
     ramus: centeredDistribution(Object.keys(RAMUS_POINTS), ramus, confidence),
+    // Keep an empty compatibility field for tabs running the previous frontend bundle.
+    evidence: [],
   };
 }
 
@@ -97,6 +99,7 @@ export function normalizeFeatures(raw) {
     angulation: normalizeDistribution(raw.angulation, Object.keys(ANGULATION_POINTS)),
     depth: normalizeDistribution(raw.depth, Object.keys(DEPTH_POINTS)),
     ramus: normalizeDistribution(raw.ramus, Object.keys(RAMUS_POINTS)),
+    evidence: [],
   };
 }
 
