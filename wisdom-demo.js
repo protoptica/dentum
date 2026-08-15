@@ -14,6 +14,7 @@ const state = {
   resultVisible: false,
   analyzing: false,
   detecting: false,
+  detectionComplete: false,
   imageRevision: 0,
   detections: { 38: null, 48: null },
 };
@@ -49,33 +50,44 @@ function setStepStates() {
 
   uploadStep.classList.toggle("is-complete", state.hasImage);
   uploadStep.classList.toggle("is-active", !state.hasImage);
-  toothStep.classList.toggle("is-active", state.hasImage && !state.tooth);
+  const hasLocatedTooth = Boolean(state.detections["38"] || state.detections["48"]);
+  const selectedDetection = state.tooth ? state.detections[state.tooth] : null;
+  toothStep.classList.toggle("is-active", state.hasImage && state.detectionComplete && hasLocatedTooth && !state.tooth);
   toothStep.classList.toggle("is-complete", Boolean(state.tooth));
-  guessStep.classList.toggle("is-active", Boolean(state.tooth));
+  guessStep.classList.toggle("is-active", Boolean(selectedDetection));
   guessStep.classList.toggle("is-complete", Boolean(state.guess));
 }
 
 function updateControls() {
   toothButtons.forEach((button) => {
-    const selected = (button.dataset.toothChoice || button.dataset.toothMarker) === state.tooth;
+    const tooth = button.dataset.toothChoice || button.dataset.toothMarker;
+    const selected = tooth === state.tooth;
     button.setAttribute("aria-pressed", String(selected));
-    button.disabled = state.detecting;
+    button.disabled = state.detecting || !state.detectionComplete || !state.detections[tooth];
   });
 
+  const selectedDetection = state.tooth ? state.detections[state.tooth] : null;
   guessButtons.forEach((button) => {
     button.setAttribute("aria-checked", String(button.dataset.guess === state.guess));
+    button.disabled = state.detecting || state.analyzing || !selectedDetection;
   });
 
-  showResultButton.disabled = state.detecting || state.analyzing || !(state.hasImage && state.tooth && state.guess);
+  showResultButton.disabled = state.detecting || state.analyzing || !(state.hasImage && selectedDetection && state.guess);
+  const hasLocatedTooth = Boolean(state.detections["38"] || state.detections["48"]);
   hint.textContent = state.detecting
     ? "Ищем зубы 38 и 48…"
+    : !state.detectionComplete
+      ? "Сначала дождитесь результата первой модели"
     : state.tooth
       ? `Выбран зуб ${state.tooth}`
-      : "Выберите 38 или 48 на снимке";
+      : hasLocatedTooth
+        ? "Выберите найденный зуб на снимке"
+        : "Нижние восьмёрки не найдены. Загрузите другой панорамный снимок.";
   setStepStates();
 }
 
 function selectTooth(tooth) {
+  if (!state.detectionComplete || !state.detections[tooth]) return;
   state.tooth = tooth;
   state.resultVisible = false;
   resultPanel.hidden = true;
@@ -84,6 +96,7 @@ function selectTooth(tooth) {
 }
 
 function selectGuess(guess) {
+  if (!state.tooth || !state.detections[state.tooth]) return;
   state.guess = guess;
   state.resultVisible = false;
   resultPanel.hidden = true;
@@ -102,6 +115,7 @@ function loadExample() {
   fileName.textContent = "Демонстрационный пример";
   uploadMessage.textContent = "";
   state.imageRevision += 1;
+  state.detectionComplete = false;
   state.detections = { 38: null, 48: null };
   resetMarkerPositions();
   updateControls();
@@ -141,6 +155,7 @@ async function handleFile(file) {
   state.imageUrl = URL.createObjectURL(file);
   state.hasImage = true;
   state.imageRevision += 1;
+  state.detectionComplete = false;
   state.detections = { 38: null, 48: null };
   image.src = state.imageUrl;
   image.alt = "Загруженный панорамный снимок";
@@ -295,15 +310,16 @@ function resetMarkerPositions() {
 
 function describeDetections(detections) {
   const found = ["48", "38"].filter((tooth) => detections[tooth]);
-  if (!found.length) return "Первая модель не нашла нижние восьмёрки с уверенностью выше 45%. Можно выбрать зуб вручную.";
+  if (!found.length) return "Первая модель не нашла нижние восьмёрки с уверенностью выше 45%. Загрузите другой панорамный снимок.";
   const details = found.map((tooth) => `${tooth} (${Math.round(detections[tooth].confidence * 100)}%)`).join(" и ");
-  const suffix = found.length === 2 ? "Круги перемещены к найденным зубам." : "Второй зуб можно выбрать вручную.";
+  const suffix = found.length === 2 ? "Круги перемещены к найденным зубам." : "Продолжить можно только с найденным зубом.";
   return `Первая модель нашла ${details}. ${suffix}`;
 }
 
 async function detectTeethOnCurrentImage() {
   const revision = state.imageRevision;
   state.detecting = true;
+  state.detectionComplete = false;
   xrayStage.classList.add("is-detecting");
   modelStatus.textContent = "Первая модель ищет нижние восьмёрки…";
   hint.textContent = "Ищем зубы 38 и 48…";
@@ -316,12 +332,14 @@ async function detectTeethOnCurrentImage() {
     const outputs = await session.run({ [session.inputNames[0]]: prepared.tensor });
     if (revision !== state.imageRevision) return;
     state.detections = parseLowerWisdomTeeth(outputs[session.outputNames[0]], prepared.transform);
+    state.detectionComplete = true;
     positionMarkers();
     modelStatus.textContent = describeDetections(state.detections);
   } catch (error) {
     if (revision !== state.imageRevision) return;
     modelSessionPromise = null;
     state.detections = { 38: null, 48: null };
+    state.detectionComplete = true;
     resetMarkerPositions();
     modelStatus.textContent = `Первая модель не запустилась: ${error.message}`;
   } finally {
@@ -335,7 +353,7 @@ async function detectTeethOnCurrentImage() {
 }
 
 function makeDistribution(detection) {
-  if (!detection) return { simple: 40, medium: 38, complex: 22 };
+  if (!detection) throw new Error("Первая модель не нашла выбранный зуб");
   const complex = Math.round(25 + detection.confidence * 55);
   const medium = Math.round(45 - detection.confidence * 25);
   return { simple: 100 - complex - medium, medium, complex };
@@ -435,16 +453,10 @@ function renderReasons(detection, complexityResult = null) {
         `Отношение к ветви: класс ${mostLikelyLabel(complexityResult.features.ramus, ["I", "II", "III"])}`,
         ...complexityResult.features.evidence.slice(0, 2),
       ]
-    : detection
-    ? [
+    : [
         `Детектор нашёл ретинированный зуб: уверенность ${Math.round(detection.confidence * 100)}%`,
         `Объект найден в зоне зуба ${state.tooth}`,
         "Вторая модель пока не подключена, используется резервная эвристика",
-      ]
-    : [
-        `В зоне зуба ${state.tooth} нет детекции выше ${Math.round(confidenceThreshold * 100)}%`,
-        "Показано нейтральное игровое распределение",
-        "Нужна проверка снимка хирургом",
       ];
   reasonList.replaceChildren(...reasons.map((reason) => {
     const item = document.createElement("li");
@@ -462,8 +474,11 @@ async function showResult() {
   updateControls();
 
   try {
-    if (!state.detections["38"] && !state.detections["48"]) await detectTeethOnCurrentImage();
     const detection = state.detections[state.tooth];
+    if (!detection) {
+      modelStatus.textContent = "Первая модель не нашла выбранный зуб. Загрузите другой панорамный снимок.";
+      return;
+    }
     let complexityResult = null;
     let secondModelError = null;
     if (detection && complexityApiUrl) {
@@ -483,9 +498,7 @@ async function showResult() {
     state.resultVisible = true;
     emptyResult.hidden = true;
     resultPanel.hidden = false;
-    resultTitle.textContent = detection
-      ? `Зуб ${state.tooth}: игровая оценка — ${labels[predicted]} удаление`
-      : `Зуб ${state.tooth}: модель не дала уверенной детекции`;
+    resultTitle.textContent = `Зуб ${state.tooth}: игровая оценка — ${labels[predicted]} удаление`;
     renderDistribution(distribution);
     renderReasons(detection, complexityResult);
 
@@ -496,9 +509,7 @@ async function showResult() {
       ? `Вторая модель: индекс ${complexityResult.mostLikely.score}, качество фрагмента ${complexityResult.features.image_quality}.`
       : secondModelError
         ? `Вторая модель недоступна: ${secondModelError.message}. Использована резервная эвристика.`
-        : detection
-      ? `Первая модель нашла зуб ${state.tooth} с уверенностью ${Math.round(detection.confidence * 100)}%. Вторая модель пока не подключена.`
-      : `Первая модель не нашла зуб ${state.tooth} с достаточной уверенностью.`;
+        : `Первая модель нашла зуб ${state.tooth} с уверенностью ${Math.round(detection.confidence * 100)}%. Вторая модель пока не подключена.`;
     resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (error) {
     modelSessionPromise = null;
@@ -555,8 +566,12 @@ new ResizeObserver(positionMarkers).observe(xrayStage);
 
 updateControls();
 
-if (new URLSearchParams(window.location.search).get("result") === "1") {
-  selectTooth("48");
+(async () => {
+  await detectTeethOnCurrentImage();
+  if (new URLSearchParams(window.location.search).get("result") !== "1") return;
+  const detectedTooth = state.detections["48"] ? "48" : state.detections["38"] ? "38" : null;
+  if (!detectedTooth) return;
+  selectTooth(detectedTooth);
   selectGuess("complex");
-  showResult();
-}
+  await showResult();
+})();

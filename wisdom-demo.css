@@ -281,6 +281,8 @@ img, svg { display: block; max-width: 100%; }
 
 .guess-choice { display: flex; flex-direction: column; gap: 6px; }
 .guess-choice button { padding: 0 14px; text-align: left; font-size: 0.85rem; }
+.tooth-choice button:disabled,
+.guess-choice button:disabled { cursor: not-allowed; opacity: 0.45; }
 .guess-choice button[data-guess="medium"][aria-checked="true"] { color: var(--medium); background: var(--medium-soft); border-color: var(--medium-border); outline-color: var(--medium-border); }
 .guess-choice button[data-guess="complex"][aria-checked="true"] { background: var(--risk-soft); border-color: var(--risk); outline-color: var(--risk); }
 
@@ -385,7 +387,8 @@ img, svg { display: block; max-width: 100%; }
 .tooth-marker span { font-weight: 800; }
 .xray-stage.is-detecting .tooth-marker { opacity: 0.32; cursor: wait; }
 .tooth-marker.is-unlocated { opacity: 0.5; border-style: dashed; }
-.tooth-marker:disabled { cursor: wait; }
+.tooth-marker:disabled { cursor: not-allowed; }
+.xray-stage.is-detecting .tooth-marker:disabled { cursor: wait; }
 
 .xray-hint {
   position: absolute;
