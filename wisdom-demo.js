@@ -2,6 +2,7 @@ const defaultImage = "./assets/wisdom-tooth-removal/panoramic-demo.jpg";
 const modelPath = "./assets/models/dental-panoramic-yolo11n.onnx";
 const modelSize = 640;
 const confidenceThreshold = 0.45;
+const anatomicalFallbackThreshold = 0.005;
 const complexityApiUrl = window.DENTUM_CONFIG?.complexityApiUrl?.trim() || "";
 
 let modelSessionPromise = null;
@@ -171,20 +172,87 @@ function waitForImage() {
   });
 }
 
+function findVerticalContentBounds(context, width, height) {
+  const pixels = context.getImageData(0, 0, width, height).data;
+  const sampleStep = Math.max(1, Math.floor(width / 320));
+  const rowHasContent = (y) => {
+    let luminanceTotal = 0;
+    let brightPixels = 0;
+    let samples = 0;
+    for (let x = 0; x < width; x += sampleStep) {
+      const offset = (y * width + x) * 4;
+      const luminance = pixels[offset] * 0.2126 + pixels[offset + 1] * 0.7152 + pixels[offset + 2] * 0.0722;
+      luminanceTotal += luminance;
+      if (luminance > 20) brightPixels += 1;
+      samples += 1;
+    }
+    return luminanceTotal / samples > 6 || brightPixels / samples > 0.04;
+  };
+
+  let top = 0;
+  let bottom = height - 1;
+  while (top < bottom && !rowHasContent(top)) top += 1;
+  while (bottom > top && !rowHasContent(bottom)) bottom -= 1;
+
+  const contentHeight = bottom - top + 1;
+  if (contentHeight < height * 0.5) return { y: 0, height };
+  const padding = Math.round(height * 0.015);
+  top = Math.max(0, top - padding);
+  bottom = Math.min(height - 1, bottom + padding);
+  if (top < height * 0.03) top = 0;
+  if (bottom > height * 0.97) bottom = height - 1;
+  return { y: top, height: bottom - top + 1 };
+}
+
+function isRadiographLike(context, width, height, contentBounds) {
+  const pixels = context.getImageData(0, contentBounds.y, width, contentBounds.height).data;
+  const pixelCount = width * contentBounds.height;
+  const sampleStep = Math.max(1, Math.floor(Math.sqrt(pixelCount / 50000)));
+  let luminanceTotal = 0;
+  let luminanceSquaredTotal = 0;
+  let colorfulPixels = 0;
+  let samples = 0;
+
+  for (let pixel = 0; pixel < pixelCount; pixel += sampleStep) {
+    const offset = pixel * 4;
+    const red = pixels[offset];
+    const green = pixels[offset + 1];
+    const blue = pixels[offset + 2];
+    const luminance = red * 0.2126 + green * 0.7152 + blue * 0.0722;
+    luminanceTotal += luminance;
+    luminanceSquaredTotal += luminance * luminance;
+    if (Math.max(red, green, blue) - Math.min(red, green, blue) > 30 && luminance > 20) colorfulPixels += 1;
+    samples += 1;
+  }
+
+  const mean = luminanceTotal / samples;
+  const deviation = Math.sqrt(Math.max(0, luminanceSquaredTotal / samples - mean * mean));
+  const contentAspectRatio = width / contentBounds.height;
+  return contentAspectRatio >= 1.35 && deviation >= 18 && colorfulPixels / samples < 0.03;
+}
+
 function prepareInputTensor() {
+  const sourceCanvas = document.createElement("canvas");
+  sourceCanvas.width = image.naturalWidth;
+  sourceCanvas.height = image.naturalHeight;
+  const sourceContext = sourceCanvas.getContext("2d", { willReadFrequently: true });
+  sourceContext.drawImage(image, 0, 0);
+  const contentBounds = findVerticalContentBounds(sourceContext, image.naturalWidth, image.naturalHeight);
+  const radiographLike = isRadiographLike(sourceContext, image.naturalWidth, image.naturalHeight, contentBounds);
+
   const canvas = document.createElement("canvas");
   canvas.width = modelSize;
   canvas.height = modelSize;
   const context = canvas.getContext("2d", { willReadFrequently: true });
-  const scale = Math.min(modelSize / image.naturalWidth, modelSize / image.naturalHeight);
+  const scale = Math.min(modelSize / image.naturalWidth, modelSize / contentBounds.height);
   const width = image.naturalWidth * scale;
-  const height = image.naturalHeight * scale;
+  const height = contentBounds.height * scale;
   const offsetX = (modelSize - width) / 2;
   const offsetY = (modelSize - height) / 2;
 
   context.fillStyle = "#000";
   context.fillRect(0, 0, modelSize, modelSize);
-  context.drawImage(image, offsetX, offsetY, width, height);
+  context.drawImage(image, 0, contentBounds.y, image.naturalWidth, contentBounds.height, offsetX, offsetY, width, height);
 
   const pixels = context.getImageData(0, 0, modelSize, modelSize).data;
   const planeSize = modelSize * modelSize;
@@ -196,7 +264,17 @@ function prepareInputTensor() {
   }
   return {
     tensor: new ort.Tensor("float32", input, [1, 3, modelSize, modelSize]),
-    transform: { width, height, offsetX, offsetY },
+    transform: {
+      width,
+      height,
+      offsetX,
+      offsetY,
+      sourceY: contentBounds.y,
+      sourceHeight: contentBounds.height,
+      naturalWidth: image.naturalWidth,
+      naturalHeight: image.naturalHeight,
+      radiographLike,
+    },
   };
 }
 
@@ -223,29 +301,42 @@ function parseLowerWisdomTeeth(output, transform) {
   );
 
   const detections = { 38: null, 48: null };
+  const fallbackDetections = { 38: null, 48: null };
   for (let detection = 0; detection < detectionCount; detection += 1) {
     const confidence = valueAt(6, detection);
-    if (confidence < confidenceThreshold) continue;
+    if (confidence < anatomicalFallbackThreshold) continue;
     const centerX = valueAt(0, detection);
     const centerY = valueAt(1, detection);
     const boxWidth = valueAt(2, detection);
     const boxHeight = valueAt(3, detection);
-    const normalizedX = (centerX - transform.offsetX) / transform.width;
-    const normalizedY = (centerY - transform.offsetY) / transform.height;
+    const contentX = (centerX - transform.offsetX) / transform.width;
+    const contentY = (centerY - transform.offsetY) / transform.height;
+    const normalizedX = contentX;
+    const normalizedY = (transform.sourceY + contentY * transform.sourceHeight) / transform.naturalHeight;
     const normalizedWidth = boxWidth / transform.width;
-    const normalizedHeight = boxHeight / transform.height;
-    if (normalizedX < 0 || normalizedX > 1 || normalizedY < 0.48 || normalizedY > 1) continue;
+    const normalizedHeight = (boxHeight / transform.height) * (transform.sourceHeight / transform.naturalHeight);
+    const isLowerPosteriorZone = contentY >= 0.52 && contentY <= 0.84 && (contentX <= 0.32 || contentX >= 0.68);
+    const hasToothLikeSize = normalizedWidth >= 0.04 && normalizedWidth <= 0.18
+      && boxHeight / transform.height >= 0.06 && boxHeight / transform.height <= 0.28;
+    if (!isLowerPosteriorZone || !hasToothLikeSize || contentX < 0 || contentX > 1) continue;
 
-    const tooth = normalizedX < 0.5 ? "48" : "38";
-    const current = detections[tooth];
-    if (!current || confidence > current.confidence) {
-      detections[tooth] = {
-        confidence,
-        x: normalizedX,
-        y: normalizedY,
-        width: normalizedWidth,
-        height: normalizedHeight,
-      };
+    const tooth = contentX < 0.5 ? "48" : "38";
+    const candidate = {
+      confidence,
+      x: normalizedX,
+      y: normalizedY,
+      width: normalizedWidth,
+      height: normalizedHeight,
+      anatomicalFallback: confidence < confidenceThreshold,
+    };
+    const target = confidence >= confidenceThreshold ? detections : fallbackDetections;
+    if (!target[tooth] || confidence > target[tooth].confidence) {
+      target[tooth] = candidate;
+    }
+  }
+  if (transform.radiographLike) {
+    for (const tooth of ["38", "48"]) {
+      if (!detections[tooth]) detections[tooth] = fallbackDetections[tooth];
     }
   }
   return detections;
@@ -309,7 +400,13 @@ function resetMarkerPositions() {
 
 function describeDetections(detections) {
   const found = ["48", "38"].filter((tooth) => detections[tooth]);
-  if (!found.length) return "Первая модель не нашла нижние восьмёрки с уверенностью выше 45%. Загрузите другой панорамный снимок.";
+  if (!found.length) return "Первая модель не нашла нижние восьмёрки с достаточной уверенностью. Загрузите другой панорамный снимок.";
+  const usedFallback = found.some((tooth) => detections[tooth].anatomicalFallback);
+  if (usedFallback) {
+    return found.length === 2
+      ? "Первая модель определила вероятные зоны зубов 48 и 38 по положению на снимке."
+      : `Первая модель определила вероятную зону зуба ${found[0]} по положению на снимке.`;
+  }
   const details = found.map((tooth) => `${tooth} (${Math.round(detections[tooth].confidence * 100)}%)`).join(" и ");
   return found.length === 2
     ? `Первая модель нашла ${details}.`
