@@ -22,3 +22,10 @@
 - Источник: https://github.com/microsoft/onnxruntime
 - Лицензия: MIT
 - Версия CDN: 1.22.0
+
+## Llama 3.2 11B Vision Instruct
+
+- Поставщик инференса: Cloudflare Workers AI
+- Модель: `@cf/meta/llama-3.2-11b-vision-instruct`
+- Условия: Meta Llama 3.2 Community License и Acceptable Use Policy
+- Модель вызывается только после настройки и публикации Worker.

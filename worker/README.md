@@ -1,0 +1,21 @@
+# Dentum complexity Worker
+
+Cloudflare Worker принимает JPEG-фрагмент выбранной нижней восьмёрки, вызывает `@cf/meta/llama-3.2-11b-vision-instruct` и возвращает признаки Pederson и игровое распределение сложности.
+
+## Локальная проверка
+
+```sh
+npm install
+npm test
+```
+
+Для проверки фронтенда без Cloudflare: `node dev/mock-server.mjs`.
+
+## Деплой
+
+1. Войти: `npx wrangler login`.
+2. Один раз принять лицензию Meta запросом `{"prompt":"agree"}` к модели.
+3. Выполнить `npm run deploy`.
+4. Записать выданный URL в `config.js` сайта.
+
+Worker не сохраняет изображения и отвечает только разрешённому origin.

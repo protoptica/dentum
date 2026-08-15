@@ -2,6 +2,7 @@ const defaultImage = "./assets/wisdom-tooth-removal/panoramic-demo.jpg";
 const modelPath = "./assets/models/dental-panoramic-yolo11n.onnx";
 const modelSize = 640;
 const confidenceThreshold = 0.45;
+const complexityApiUrl = window.DENTUM_CONFIG?.complexityApiUrl?.trim() || "";
 
 let modelSessionPromise = null;
 
@@ -340,6 +341,74 @@ function makeDistribution(detection) {
   return { simple: 100 - complex - medium, medium, complex };
 }
 
+function makeComplexityCrop(detection, tooth) {
+  const cropWidth = clamp(Math.max(0.38, detection.width * 4.2), 0.38, 0.62);
+  const cropHeight = clamp(Math.max(0.5, detection.height * 3.2), 0.5, 0.72);
+  const directionToSecondMolar = tooth === "48" ? 1 : -1;
+  const centerX = detection.x + directionToSecondMolar * cropWidth * 0.14;
+  const centerY = detection.y + cropHeight * 0.02;
+  const cropX = clamp(centerX - cropWidth / 2, 0, 1 - cropWidth);
+  const cropY = clamp(centerY - cropHeight / 2, 0, 1 - cropHeight);
+
+  const sourceX = cropX * image.naturalWidth;
+  const sourceY = cropY * image.naturalHeight;
+  const sourceWidth = cropWidth * image.naturalWidth;
+  const sourceHeight = cropHeight * image.naturalHeight;
+  const canvas = document.createElement("canvas");
+  canvas.width = 768;
+  canvas.height = 768;
+  const context = canvas.getContext("2d");
+  const scale = Math.min(canvas.width / sourceWidth, canvas.height / sourceHeight);
+  const targetWidth = sourceWidth * scale;
+  const targetHeight = sourceHeight * scale;
+
+  context.fillStyle = "#000";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    (canvas.width - targetWidth) / 2,
+    (canvas.height - targetHeight) / 2,
+    targetWidth,
+    targetHeight,
+  );
+  return canvas.toDataURL("image/jpeg", 0.84);
+}
+
+function roundDistribution(distribution) {
+  const keys = ["simple", "medium", "complex"];
+  const values = keys.map((key) => Math.max(0, Number(distribution[key]) || 0));
+  const total = values.reduce((sum, value) => sum + value, 0) || 1;
+  const exact = values.map((value) => (value / total) * 100);
+  const rounded = exact.map(Math.floor);
+  let remainder = 100 - rounded.reduce((sum, value) => sum + value, 0);
+  const order = exact.map((value, index) => ({ index, fraction: value - rounded[index] }))
+    .sort((a, b) => b.fraction - a.fraction);
+  for (let index = 0; index < remainder; index += 1) rounded[order[index].index] += 1;
+  return Object.fromEntries(keys.map((key, index) => [key, rounded[index]]));
+}
+
+async function requestComplexityEstimate(detection) {
+  if (!complexityApiUrl) return null;
+  const response = await fetch(complexityApiUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      tooth: state.tooth,
+      image: makeComplexityCrop(detection, state.tooth),
+    }),
+    signal: AbortSignal.timeout(30000),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.detail || payload.error || "Вторая модель не ответила");
+  if (!payload.distribution || !payload.features) throw new Error("Неполный ответ второй модели");
+  if (payload.features.image_quality === "invalid") throw new Error("Модель не смогла прочитать фрагмент");
+  return payload;
+}
+
 function renderDistribution(distribution) {
   Object.entries(distribution).forEach(([level, value]) => {
     const row = document.querySelector(`.probability[data-level="${level}"]`);
@@ -348,12 +417,29 @@ function renderDistribution(distribution) {
   });
 }
 
-function renderReasons(detection) {
-  const reasons = detection
+function mostLikelyLabel(distribution, labels) {
+  return Object.entries(distribution).sort((a, b) => b[1] - a[1])[0]?.[0] || labels[0];
+}
+
+function renderReasons(detection, complexityResult = null) {
+  const featureLabels = {
+    mesioangular: "мезиальный наклон",
+    horizontal: "горизонтальное положение",
+    vertical: "вертикальное положение",
+    distoangular: "дистальный наклон",
+  };
+  const reasons = complexityResult
+    ? [
+        `Угол: ${featureLabels[mostLikelyLabel(complexityResult.features.angulation, Object.keys(featureLabels))]}`,
+        `Глубина: уровень ${mostLikelyLabel(complexityResult.features.depth, ["A", "B", "C"])}`,
+        `Отношение к ветви: класс ${mostLikelyLabel(complexityResult.features.ramus, ["I", "II", "III"])}`,
+        ...complexityResult.features.evidence.slice(0, 2),
+      ]
+    : detection
     ? [
         `Детектор нашёл ретинированный зуб: уверенность ${Math.round(detection.confidence * 100)}%`,
         `Объект найден в зоне зуба ${state.tooth}`,
-        "Сложность рассчитана игровой эвристикой поверх детекции",
+        "Вторая модель пока не подключена, используется резервная эвристика",
       ]
     : [
         `В зоне зуба ${state.tooth} нет детекции выше ${Math.round(confidenceThreshold * 100)}%`,
@@ -378,7 +464,19 @@ async function showResult() {
   try {
     if (!state.detections["38"] && !state.detections["48"]) await detectTeethOnCurrentImage();
     const detection = state.detections[state.tooth];
-    const distribution = makeDistribution(detection);
+    let complexityResult = null;
+    let secondModelError = null;
+    if (detection && complexityApiUrl) {
+      modelStatus.textContent = "Вторая модель оценивает угол, глубину и отношение к ветви…";
+      try {
+        complexityResult = await requestComplexityEstimate(detection);
+      } catch (error) {
+        secondModelError = error;
+      }
+    }
+    const distribution = complexityResult
+      ? roundDistribution(complexityResult.distribution)
+      : makeDistribution(detection);
     const predicted = Object.entries(distribution).sort((a, b) => b[1] - a[1])[0][0];
     const labels = { simple: "простое", medium: "среднее", complex: "сложное" };
 
@@ -389,13 +487,17 @@ async function showResult() {
       ? `Зуб ${state.tooth}: игровая оценка — ${labels[predicted]} удаление`
       : `Зуб ${state.tooth}: модель не дала уверенной детекции`;
     renderDistribution(distribution);
-    renderReasons(detection);
+    renderReasons(detection, complexityResult);
 
     const matched = state.guess === predicted;
     matchBadge.textContent = matched ? "Ваш прогноз совпал" : "Система оценила иначе";
     matchBadge.classList.toggle("is-miss", !matched);
-    modelStatus.textContent = detection
-      ? `Первая модель нашла зуб ${state.tooth} с уверенностью ${Math.round(detection.confidence * 100)}%.`
+    modelStatus.textContent = complexityResult
+      ? `Вторая модель: индекс ${complexityResult.mostLikely.score}, качество фрагмента ${complexityResult.features.image_quality}.`
+      : secondModelError
+        ? `Вторая модель недоступна: ${secondModelError.message}. Использована резервная эвристика.`
+        : detection
+      ? `Первая модель нашла зуб ${state.tooth} с уверенностью ${Math.round(detection.confidence * 100)}%. Вторая модель пока не подключена.`
       : `Первая модель не нашла зуб ${state.tooth} с достаточной уверенностью.`;
     resultPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (error) {
