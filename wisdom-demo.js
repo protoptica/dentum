@@ -347,13 +347,6 @@ function clamp(value, minimum, maximum) {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
-function getMarkerAnchor(detection) {
-  return {
-    x: clamp(detection.x, 0.04, 0.96),
-    y: clamp(detection.y - detection.height * 0.28, 0.12, 0.88),
-  };
-}
-
 function normalizedImagePointToStage(point) {
   const stageWidth = xrayStage.clientWidth;
   const stageHeight = xrayStage.clientHeight;
@@ -404,7 +397,19 @@ function positionMarkers() {
       return;
     }
 
-    const stagePoint = normalizedImagePointToStage(getMarkerAnchor(detection));
+    const topLeft = normalizedImagePointToStage({
+      x: detection.x - detection.width / 2,
+      y: detection.y - detection.height / 2,
+    });
+    const bottomRight = normalizedImagePointToStage({
+      x: detection.x + detection.width / 2,
+      y: detection.y + detection.height / 2,
+    });
+    const horizontalGap = (button.offsetWidth / 2 + 5) / xrayStage.clientWidth;
+    const stagePoint = {
+      x: tooth === "48" ? topLeft.x - horizontalGap : bottomRight.x + horizontalGap,
+      y: topLeft.y + (bottomRight.y - topLeft.y) * 0.22,
+    };
     button.style.left = `${clamp(stagePoint.x * 100, 4, 96)}%`;
     button.style.top = `${clamp(stagePoint.y * 100, 8, 92)}%`;
     button.title = `Зуб ${tooth}, уверенность детекции ${Math.round(detection.confidence * 100)}%`;
