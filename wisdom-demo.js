@@ -74,6 +74,7 @@ function updateControls() {
 
   showResultButton.disabled = state.detecting || state.analyzing || !(state.hasImage && selectedDetection && state.guess);
   const hasLocatedTooth = Boolean(state.detections["38"] || state.detections["48"]);
+  hint.classList.toggle("is-warning", state.detectionComplete && !hasLocatedTooth);
   hint.textContent = state.detecting
     ? "Ищем зубы 38 и 48…"
     : !state.detectionComplete

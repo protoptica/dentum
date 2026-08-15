@@ -405,6 +405,19 @@ img, svg { display: block; max-width: 100%; }
   white-space: nowrap;
 }
 
+.xray-hint.is-warning {
+  top: 50%;
+  bottom: auto;
+  width: min(780px, calc(100% - 48px));
+  min-height: 72px;
+  padding: 18px 24px;
+  font-size: clamp(1.2rem, 2.2vw, 1.56rem);
+  line-height: 1.25;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  white-space: normal;
+}
+
 .empty-result {
   display: flex;
   align-items: center;
@@ -549,6 +562,7 @@ button:focus-visible, label:focus-within, a:focus-visible {
   .tooth-marker--48 { left: 11%; }
   .tooth-marker--38 { left: 89%; }
   .xray-hint { bottom: 12px; max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; }
+  .xray-hint.is-warning { top: 50%; bottom: auto; max-width: calc(100% - 32px); overflow: visible; padding: 16px 18px; font-size: clamp(1.05rem, 5vw, 1.3rem); text-overflow: clip; }
   .empty-result { justify-content: flex-start; padding-inline: 0; }
   .result-panel__heading { flex-direction: column; }
   .match-badge { align-self: flex-start; }
