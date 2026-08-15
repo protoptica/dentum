@@ -208,6 +208,13 @@ img, svg { display: block; max-width: 100%; }
   line-height: 1.45;
 }
 
+.step__content > .upload-consent {
+  margin-bottom: 14px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
 .button {
   display: inline-flex;
   align-items: center;
