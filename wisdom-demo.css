@@ -506,22 +506,6 @@ img, svg { display: block; max-width: 100%; }
 .demo-footer p { margin: 0; }
 .demo-footer a { color: var(--brand-deep); }
 
-.consultation-dialog {
-  width: min(440px, calc(100% - 32px));
-  padding: 0;
-  color: var(--ink);
-  background: var(--surface);
-  border: 0;
-  border-radius: var(--radius-lg);
-  box-shadow: 0 8px 24px rgba(15, 42, 55, 0.18);
-  z-index: var(--z-dialog);
-}
-.consultation-dialog::backdrop { background: rgba(15, 42, 55, 0.54); }
-.consultation-dialog form { position: relative; padding: 32px; }
-.consultation-dialog h2 { margin: 0; color: var(--ink-strong); font-size: 1.6rem; }
-.consultation-dialog form > p:not(.demo-label) { margin: 12px 0 24px; color: var(--muted); line-height: 1.55; }
-.dialog-close { position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; color: var(--muted); background: transparent; border: 0; cursor: pointer; font-size: 1.6rem; }
-
 button:focus-visible, label:focus-within, a:focus-visible {
   outline: 3px solid rgba(21, 148, 167, 0.3);
   outline-offset: 3px;

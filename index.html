@@ -146,7 +146,7 @@
           </div>
 
           <div class="result-actions">
-            <button class="button button--primary" type="button" id="book-consultation">Записаться к хирургу</button>
+            <a class="button button--primary" href="https://dentumclinic.ru/kontakty/" id="book-consultation">Записаться к хирургу</a>
             <button class="button button--secondary" type="button" id="try-again">Проверить другой зуб</button>
           </div>
         </div>
@@ -166,16 +166,6 @@
     <footer class="demo-footer">
       <p>Снимок: Coronation Dental Specialty Group, <a href="https://commons.wikimedia.org/wiki/File:Basic_panoramic_radiograph.jpg" target="_blank" rel="noreferrer">CC BY 3.0</a>. Модель: <a href="https://huggingface.co/liodon-ai/dental-panoramic-detector" target="_blank" rel="noreferrer">Liodon AI, CC BY-NC 4.0</a>.</p>
     </footer>
-
-    <dialog class="consultation-dialog" id="consultation-dialog">
-      <form method="dialog">
-        <button class="dialog-close" value="cancel" aria-label="Закрыть окно">×</button>
-        <p class="demo-label">Демо-заявка</p>
-        <h2>Передать снимок хирургу</h2>
-        <p>В рабочей версии здесь будет форма записи и отправка снимка в клинику.</p>
-        <button class="button button--primary" value="confirm">Понятно, закрыть</button>
-      </form>
-    </dialog>
 
     <script src="./config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.min.js" crossorigin="anonymous"></script>

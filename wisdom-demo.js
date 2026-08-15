@@ -32,8 +32,6 @@ const resultTitle = document.querySelector("#result-title");
 const matchBadge = document.querySelector("#match-badge");
 const resetButton = document.querySelector("#reset-demo");
 const tryAgainButton = document.querySelector("#try-again");
-const consultationButton = document.querySelector("#book-consultation");
-const consultationDialog = document.querySelector("#consultation-dialog");
 const xrayStage = document.querySelector("#xray-stage");
 const modelStatus = document.querySelector("#model-status");
 const reasonList = document.querySelector("#result-reason-list");
@@ -313,8 +311,9 @@ function describeDetections(detections) {
   const found = ["48", "38"].filter((tooth) => detections[tooth]);
   if (!found.length) return "Первая модель не нашла нижние восьмёрки с уверенностью выше 45%. Загрузите другой панорамный снимок.";
   const details = found.map((tooth) => `${tooth} (${Math.round(detections[tooth].confidence * 100)}%)`).join(" и ");
-  const suffix = found.length === 2 ? "Круги перемещены к найденным зубам." : "Продолжить можно только с найденным зубом.";
-  return `Первая модель нашла ${details}. ${suffix}`;
+  return found.length === 2
+    ? `Первая модель нашла ${details}.`
+    : `Первая модель нашла ${details}. Продолжить можно только с найденным зубом.`;
 }
 
 async function detectTeethOnCurrentImage() {
@@ -561,7 +560,6 @@ resetButton.addEventListener("click", async () => {
   await detectTeethOnCurrentImage();
 });
 tryAgainButton.addEventListener("click", () => resetDemo({ keepImage: true }));
-consultationButton.addEventListener("click", () => consultationDialog.showModal());
 image.addEventListener("load", positionMarkers);
 new ResizeObserver(positionMarkers).observe(xrayStage);
 
