@@ -13,29 +13,21 @@ const RAMUS_POINTS = { I: 1, II: 2, III: 3 };
 const SYSTEM_PROMPT = `You inspect a cropped panoramic dental X-ray for an educational game.
 The crop contains one lower third molar, its neighboring second molar, and part of the mandibular ramus.
 Do not diagnose disease, nerve involvement, treatment need, or surgical outcome.
-Return JSON only. Do not use markdown.`;
+Follow the requested plain-text output format exactly. Do not use Markdown.`;
 
 function makePrompt(tooth) {
   return `Analyze lower third molar ${tooth} using visible radiographic geometry only.
 
-Return exactly this object:
-{
-  "image_quality": "ok" | "low" | "invalid",
-  "angulation": {
-    "mesioangular": number,
-    "horizontal": number,
-    "vertical": number,
-    "distoangular": number
-  },
-  "depth": { "A": number, "B": number, "C": number },
-  "ramus": { "I": number, "II": number, "III": number },
-  "evidence": [string, string, string]
-}
-
-Each probability group must sum to 1. Use low-confidence, flatter distributions when landmarks are unclear.
+Classify angulation as exactly one of: mesioangular, horizontal, vertical, distoangular.
 Depth: A is at or above the second molar occlusal plane; B is between its occlusal plane and cervical line; C is below its cervical line.
 Ramus: I has enough space for the third-molar crown; II has less space than crown width; III is mainly within the ramus.
-Evidence must be short, in Russian, and describe only visible geometry.`;
+
+Return exactly five plain-text lines:
+QUALITY=<ok, low, or invalid>
+ANGULATION=<one allowed angulation>
+DEPTH=<A, B, or C>
+RAMUS=<I, II, or III>
+EVIDENCE=<one short Russian phrase about visible geometry>`;
 }
 
 function jsonResponse(payload, status, origin) {
@@ -68,11 +60,36 @@ function normalizeDistribution(value, allowedKeys) {
   return Object.fromEntries(entries.map(([key, probability]) => [key, probability / total]));
 }
 
-function extractJson(text) {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start < 0 || end <= start) throw new Error("Model did not return JSON");
-  return JSON.parse(text.slice(start, end + 1));
+function centeredDistribution(keys, selected, confidence) {
+  const remainder = (1 - confidence) / (keys.length - 1);
+  return Object.fromEntries(keys.map((key) => [key, key === selected ? confidence : remainder]));
+}
+
+export function parseCategoricalOutput(text) {
+  if (typeof text !== "string") throw new Error("Model did not return text");
+  const fields = Object.fromEntries(
+    text.split(/\r?\n/).map((line) => {
+      const separator = line.indexOf("=");
+      return separator > 0 ? [line.slice(0, separator).trim().toUpperCase(), line.slice(separator + 1).trim()] : [];
+    }).filter((entry) => entry.length === 2),
+  );
+
+  const quality = ["ok", "low", "invalid"].includes(fields.QUALITY) ? fields.QUALITY : "low";
+  const angulation = fields.ANGULATION?.toLowerCase();
+  const depth = fields.DEPTH?.toUpperCase();
+  const ramus = fields.RAMUS?.toUpperCase();
+  if (!(angulation in ANGULATION_POINTS) || !(depth in DEPTH_POINTS) || !(ramus in RAMUS_POINTS)) {
+    throw new Error("Model returned unknown geometry labels");
+  }
+
+  const confidence = quality === "ok" ? 0.76 : quality === "low" ? 0.55 : 0.4;
+  return {
+    image_quality: quality,
+    angulation: centeredDistribution(Object.keys(ANGULATION_POINTS), angulation, confidence),
+    depth: centeredDistribution(Object.keys(DEPTH_POINTS), depth, confidence),
+    ramus: centeredDistribution(Object.keys(RAMUS_POINTS), ramus, confidence),
+    evidence: fields.EVIDENCE ? [fields.EVIDENCE] : [],
+  };
 }
 
 export function normalizeFeatures(raw) {
@@ -143,8 +160,8 @@ export default {
         temperature: 0.1,
       });
 
-      const modelText = typeof result === "string" ? result : result.response;
-      const features = normalizeFeatures(extractJson(modelText));
+      const modelOutput = result?.response ?? result;
+      const features = parseCategoricalOutput(modelOutput);
       const score = calculateDistribution(features);
       return jsonResponse({ model: MODEL, tooth: body.tooth, features, ...score }, 200, allowedOrigin);
     } catch (error) {

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import worker, { calculateDistribution, normalizeFeatures } from "../src/index.js";
+import worker, { calculateDistribution, normalizeFeatures, parseCategoricalOutput } from "../src/index.js";
 
 test("maps a certain easy combination to simple", () => {
   const features = normalizeFeatures({
@@ -41,6 +41,13 @@ test("normalizes imperfect model probability groups", () => {
   assert.ok(Math.abs(total - 1) < 1e-9);
 });
 
+test("turns categorical vision output into uncertainty distributions", () => {
+  const features = parseCategoricalOutput("QUALITY=ok\nANGULATION=mesioangular\nDEPTH=B\nRAMUS=II\nEVIDENCE=Наклон к соседнему зубу");
+  assert.equal(features.angulation.mesioangular, 0.76);
+  assert.equal(features.depth.B, 0.76);
+  assert.equal(features.ramus.II, 0.76);
+});
+
 test("returns a scored response from the Worker contract", async () => {
   const request = new Request("https://worker.test", {
     method: "POST",
@@ -54,13 +61,7 @@ test("returns a scored response from the Worker contract", async () => {
     ALLOWED_ORIGIN: "https://yaroslavnasol.ru",
     AI: {
       run: async () => ({
-        response: JSON.stringify({
-          image_quality: "ok",
-          angulation: { mesioangular: 0.8, horizontal: 0.1, vertical: 0.1, distoangular: 0 },
-          depth: { A: 0.1, B: 0.8, C: 0.1 },
-          ramus: { I: 0.2, II: 0.7, III: 0.1 },
-          evidence: ["Наклон к семёрке", "Коронка частично перекрыта ветвью"],
-        }),
+        response: "QUALITY=ok\nANGULATION=mesioangular\nDEPTH=B\nRAMUS=II\nEVIDENCE=Наклон к семёрке",
       }),
     },
   };

@@ -1,3 +1,3 @@
 window.DENTUM_CONFIG = Object.freeze({
-  complexityApiUrl: "",
+  complexityApiUrl: "https://dentum-complexity-demo.yaroslavnaalexandrovna.workers.dev",
 });
