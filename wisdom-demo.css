@@ -7,9 +7,10 @@
   --base: #f4f7f8;
   --mint: #d4efe8;
   --warm: #fff1dd;
-  --medium: #8a5a00;
-  --medium-bar: #b77800;
-  --medium-soft: #fff3c7;
+  --medium: #9a6200;
+  --medium-border: #b9790a;
+  --medium-bar: #c68a16;
+  --medium-soft: #fff7dd;
   --risk: #c94f52;
   --risk-soft: #fff0ef;
   --surface: #ffffff;
@@ -283,7 +284,7 @@ img, svg { display: block; max-width: 100%; }
 
 .guess-choice { display: flex; flex-direction: column; gap: 6px; }
 .guess-choice button { padding: 0 14px; text-align: left; font-size: 0.85rem; }
-.guess-choice button[data-guess="medium"][aria-checked="true"] { color: var(--medium); background: var(--medium-soft); border-color: var(--medium); outline-color: var(--medium); }
+.guess-choice button[data-guess="medium"][aria-checked="true"] { color: var(--medium); background: var(--medium-soft); border-color: var(--medium-border); outline-color: var(--medium-border); }
 .guess-choice button[data-guess="complex"][aria-checked="true"] { background: var(--risk-soft); border-color: var(--risk); outline-color: var(--risk); }
 
 .safety-note {
