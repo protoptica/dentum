@@ -37,6 +37,7 @@ const xrayStage = document.querySelector("#xray-stage");
 const modelStatus = document.querySelector("#model-status");
 const reasonList = document.querySelector("#result-reason-list");
 const markerButtons = [...document.querySelectorAll("[data-tooth-marker]")];
+const detectionBoxes = [...document.querySelectorAll("[data-detection-box]")];
 
 const toothButtons = [...document.querySelectorAll("[data-tooth-choice], [data-tooth-marker]")];
 const guessButtons = [...document.querySelectorAll("[data-guess]")];
@@ -349,7 +350,7 @@ function clamp(value, minimum, maximum) {
 function getMarkerAnchor(detection) {
   return {
     x: clamp(detection.x, 0.04, 0.96),
-    y: clamp(detection.y + detection.height * 0.5 + 0.035, 0.12, 0.88),
+    y: clamp(detection.y - detection.height * 0.28, 0.12, 0.88),
   };
 }
 
@@ -370,6 +371,27 @@ function normalizedImagePointToStage(point) {
 }
 
 function positionMarkers() {
+  detectionBoxes.forEach((box) => {
+    const detection = state.detections[box.dataset.detectionBox];
+    box.classList.toggle("is-visible", Boolean(detection));
+    if (!detection) {
+      box.removeAttribute("style");
+      return;
+    }
+    const topLeft = normalizedImagePointToStage({
+      x: detection.x - detection.width / 2,
+      y: detection.y - detection.height / 2,
+    });
+    const bottomRight = normalizedImagePointToStage({
+      x: detection.x + detection.width / 2,
+      y: detection.y + detection.height / 2,
+    });
+    box.style.left = `${clamp(topLeft.x * 100, 0, 100)}%`;
+    box.style.top = `${clamp(topLeft.y * 100, 0, 100)}%`;
+    box.style.width = `${clamp((bottomRight.x - topLeft.x) * 100, 2, 100)}%`;
+    box.style.height = `${clamp((bottomRight.y - topLeft.y) * 100, 4, 100)}%`;
+  });
+
   markerButtons.forEach((button) => {
     const tooth = button.dataset.toothMarker;
     const detection = state.detections[tooth];
@@ -390,6 +412,10 @@ function positionMarkers() {
 }
 
 function resetMarkerPositions() {
+  detectionBoxes.forEach((box) => {
+    box.classList.remove("is-visible");
+    box.removeAttribute("style");
+  });
   markerButtons.forEach((button) => {
     button.classList.remove("is-located", "is-unlocated");
     button.style.removeProperty("left");

@@ -362,13 +362,25 @@ img, svg { display: block; max-width: 100%; }
 .scan-corner--bl { bottom: 14px; left: 14px; border-width: 0 0 3px 3px; }
 .scan-corner--br { right: 14px; bottom: 14px; border-width: 0 3px 3px 0; }
 
+.detection-box {
+  position: absolute;
+  display: none;
+  border: 2px solid rgba(21, 148, 167, 0.92);
+  border-radius: var(--radius-sm);
+  background: rgba(21, 148, 167, 0.08);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.72) inset;
+  pointer-events: none;
+}
+
+.detection-box.is-visible { display: block; }
+
 .tooth-marker {
   position: absolute;
   top: 69%;
   display: grid;
   place-items: center;
-  width: 54px;
-  height: 54px;
+  width: 46px;
+  height: 46px;
   padding: 0;
   color: #fff;
   background: rgba(8, 118, 135, 0.9);
@@ -549,7 +561,7 @@ button:focus-visible, label:focus-within, a:focus-visible {
   .model-status, .safety-note { margin-top: -16px; text-align: center; }
   .xray-stage { min-height: 250px; aspect-ratio: 1.45 / 1; }
   .xray-stage img { object-position: center; }
-  .tooth-marker { top: 67%; width: 48px; height: 48px; }
+  .tooth-marker { top: 67%; width: 42px; height: 42px; }
   .tooth-marker--48 { left: 11%; }
   .tooth-marker--38 { left: 89%; }
   .xray-hint { bottom: 12px; max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; }
