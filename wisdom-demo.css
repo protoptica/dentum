@@ -7,6 +7,9 @@
   --base: #f4f7f8;
   --mint: #d4efe8;
   --warm: #fff1dd;
+  --medium: #8a5a00;
+  --medium-bar: #b77800;
+  --medium-soft: #fff3c7;
   --risk: #c94f52;
   --risk-soft: #fff0ef;
   --surface: #ffffff;
@@ -280,6 +283,7 @@ img, svg { display: block; max-width: 100%; }
 
 .guess-choice { display: flex; flex-direction: column; gap: 6px; }
 .guess-choice button { padding: 0 14px; text-align: left; font-size: 0.85rem; }
+.guess-choice button[data-guess="medium"][aria-checked="true"] { color: var(--medium); background: var(--medium-soft); border-color: var(--medium); outline-color: var(--medium); }
 .guess-choice button[data-guess="complex"][aria-checked="true"] { background: var(--risk-soft); border-color: var(--risk); outline-color: var(--risk); }
 
 .safety-note {
@@ -463,6 +467,9 @@ img, svg { display: block; max-width: 100%; }
 .probability strong { text-align: right; font-variant-numeric: tabular-nums; }
 .probability__track { height: 9px; overflow: hidden; background: #e4ecef; border-radius: 999px; }
 .probability__track i { display: block; width: var(--value); height: 100%; background: #86d1c2; border-radius: inherit; transform-origin: left; animation: grow-bar 620ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.probability[data-level="medium"] > span,
+.probability[data-level="medium"] > strong { color: var(--medium); }
+.probability[data-level="medium"] .probability__track i { background: var(--medium-bar); }
 .probability--risk { color: var(--risk); }
 .probability--risk .probability__track i { background: var(--risk); }
 
